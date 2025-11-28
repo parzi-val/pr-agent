@@ -39,7 +39,7 @@ class GitHubClient:
         # Using the latest API parameters if possible
         pr.create_review_comment(
             body=body,
-            commit_id=pr.get_commits().reversed[0], 
+            commit=pr.get_commits().reversed[0], 
             path=path,
             line=line,
             side="RIGHT"

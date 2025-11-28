@@ -1,22 +1,24 @@
-from enum import Enum
-from typing import Literal
 from pydantic import BaseModel
+from enum import Enum
 
-class IssueType(str, Enum):
+class IssueType(Enum):
     LOGIC = "Logic"
     SECURITY = "Security"
     PERFORMANCE = "Performance"
-    STYLE = "Style"
+    READABILITY = "Readability"
 
-class Severity(str, Enum):
-    CRITICAL = "Critical"
-    MEDIUM = "Medium"
+class Severity(Enum):
     LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+    CRITICAL = "Critical"
 
 class CodeIssue(BaseModel):
+    id: str = "" # Optional ID for deduplication
     file_path: str
     line_number: int
     issue_type: IssueType
     severity: Severity
+    tldr: str # Short summary (10-12 words)
     description: str
     suggestion: str

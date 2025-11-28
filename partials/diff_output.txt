@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+index a83618bcf17b..a2d9fe905532 100644
+--- a/index.html
++++ b/index.html
+@@ -10,10 +10,14 @@
+ <body>
+ 
+ <img src="forkit.gif" id="octocat" alt="" />
++   <div id="octocat">
++          <img src="https://octodex.github.com/images/NUX_Octodex.gif" alt="Octocat Image">
++   </div>div>
+ 
+-<!-- Feel free to change this text here -->
+-<p>
+-  Fork me? Fork you, @octocat!
++     <p>
++            Ready to team up? Let's collaborate, @octocat!
++     </p>
++     </p>
+ </p>
+ 
+ </body>
+diff --git a/styles.css b/styles.css
+index 9b8528455cf7..5e17135cc5c3 100644
+--- a/styles.css
++++ b/styles.css
+@@ -14,4 +14,18 @@ p {
+   width: 400px;
+   margin: 50px auto;
+   font: 30px Monaco,"Courier New","DejaVu Sans Mono","Bitstream Vera Sans Mono",monospace;
++     color: #333;
++       line-height: 1.5;
++       text-align: center;
+ }
++
++   body {
++          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++          background-color: #f8f9fa;
++   }
++
++   #octocat img {
++          display: block;
++          width: 100%;
++          height: auto;
++   }
