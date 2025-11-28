@@ -29,7 +29,7 @@ PR Agent is an automated code review tool powered by LLMs. It analyzes Pull Requ
 - Python 3.10+
 - Node.js 18+
 - GitHub Token (with repo permissions)
-- OpenAI API Key
+- Gemini API Key
 
 ### Backend
 
@@ -46,7 +46,7 @@ PR Agent is an automated code review tool powered by LLMs. It analyzes Pull Requ
 4.  Set up environment variables in `.env`:
     ```env
     GITHUB_TOKEN=your_github_token
-    OPENAI_API_KEY=your_openai_api_key
+    GOOGLE_API_KEY=your_gemini_api_key
     ```
 5.  Run the server:
     ```bash
