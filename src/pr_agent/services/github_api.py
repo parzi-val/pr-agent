@@ -29,14 +29,7 @@ class GitHubClient:
 
     def post_inline_comment(self, repo_name: str, pr_number: int, commit_id: str, path: str, line: int, body: str):
         pr = self.get_pr(repo_name, pr_number)
-        # Note: 'line' in create_review_comment refers to the line in the diff, not the file.
-        # This is a common pitfall. Modern GitHub API allows specifying side and line.
-        # However, PyGithub's create_review_comment usually takes position or line/side.
-        # We will need to map file line number to diff position or use the newer API if supported.
-        # For simplicity in this step, we'll assume we can pass the correct parameters.
-        # In a real implementation, we need to calculate the position in the diff.
-        
-        # Using the latest API parameters if possible
+
         pr.create_review_comment(
             body=body,
             commit=pr.get_commits().reversed[0], 

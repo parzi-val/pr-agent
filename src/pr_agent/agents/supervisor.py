@@ -53,9 +53,7 @@ class SupervisorAgent:
             groups = grouped_data.get("groups", [])
             print(f"DEBUG: Pivot Result: {groups}")
             
-            # For now, we stop here to test the pivot as requested.
-            # We will return the original issues but maybe print the groups to verify.
-            # The user said: "implement all of this but comment out the second pass, first we will test the pivot"
+            print(f"DEBUG: Pivot Result: {groups}")
             
             # Rebuild: Create clubbed representations
             clubbed_issues = []

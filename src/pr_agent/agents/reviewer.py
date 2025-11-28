@@ -16,9 +16,6 @@ class ReviewerAgent:
         
         # Ensure diff is a PullRequestDiff object
         if not isinstance(diff, PullRequestDiff):
-            # Fallback or error? For now, assume it's passed correctly or handle raw string if needed (but we want structured)
-            # If it's a string, we might need to parse it here or assume caller did.
-            # The plan says caller (graph node) parses it.
             print("Warning: ReviewerAgent received non-structured diff")
             return []
 

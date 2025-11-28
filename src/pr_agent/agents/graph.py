@@ -16,8 +16,6 @@ def fetch_context_node(state: AgentState) -> Dict[str, Any]:
     logger.info("Executing fetch_context_node")
     repo_url = state.get("repo_url")
     if not repo_url:
-        # Fallback or error if not provided?
-        # For now, we assume it's there or we can't fetch context.
         logger.warning("No repo_url provided in state.")
         return {"repo_context": "No repository URL provided."}
         
