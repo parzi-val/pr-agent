@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add src to path to allow importing pr_agent
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 from fastapi import FastAPI
 from pr_agent.api.routes import router
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,4 +29,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

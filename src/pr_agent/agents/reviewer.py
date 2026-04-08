@@ -5,10 +5,8 @@ from pr_agent.core.llm import get_llm
 from pr_agent.models.issues import CodeIssue, IssueType
 
 class ReviewerAgent:
-    def __init__(self, role: IssueType):
-        self.role = role
+    def __init__(self):
         self.llm = get_llm()
-        self.parser = PydanticOutputParser(pydantic_object=CodeIssue)
 
     def review(self, diff: Any, context: str) -> List[CodeIssue]:
         from pydantic import BaseModel
@@ -26,108 +24,80 @@ class ReviewerAgent:
         
         all_issues = []
         
-        # We can review file by file to avoid context window limits and give better focus
+        # Batch all file diffs into a single prompt for better cross-file context
+        all_diffs_str = ""
+        # Files to skip to reduce noise and save tokens
+        EXCLUDED_FILES = {'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'poetry.lock', 'go.sum'}
+        
         for file_diff in diff.files:
-            if file_diff.is_deleted:
+            if file_diff.is_deleted or any(file_diff.path.endswith(ext) for ext in EXCLUDED_FILES):
+                continue
+            
+            # Simple heuristic: skip files with massive hunks (e.g., generated files)
+            file_content = ""
+            for hunk in file_diff.hunks:
+                file_content += f"{hunk.header}\n"
+                for i, line in enumerate(hunk.lines):
+                    line_num = hunk.new_start + i
+                    file_content += f"{line_num}: {line}\n"
+            
+            if len(file_content) > 50000: # Skip extremely large files in diff
+                all_diffs_str += f"\n--- File: {file_diff.path} (Large file diff skipped) ---\n"
                 continue
                 
-            # Construct a file-specific context/prompt
-            # We serialize the file diff to a string for the prompt
-            file_diff_str = f"File: {file_diff.path}\n"
-            for hunk in file_diff.hunks:
-                file_diff_str += f"{hunk.header}\n{hunk.content}\n"
+            all_diffs_str += f"\n--- File: {file_diff.path} ---\n" + file_content
+        
+        prompt = ChatPromptTemplate.from_template(
+            """You are an expert multi-disciplinary code reviewer.
+            Your task is to review the following changes from a pull request across four key domains:
             
-            # Custom prompts per role
-            role_prompts = {
-                IssueType.LOGIC: """
-                    Focus on:
-                    - Bugs, race conditions, logical errors.
-                    - Incorrect handling of edge cases.
-                    - API misuse.
-                    
-                    Do NOT flag:
-                    - Style issues (indentation, whitespace).
-                    - Minor performance optimizations unless critical.
-                """,
-                IssueType.SECURITY: """
-                    Focus on:
-                    - Vulnerabilities (XSS, SQLi, RCE).
-                    - Hardcoded secrets/credentials.
-                    - Unsafe data handling.
-                    
-                    Do NOT flag:
-                    - Using external trusted domains (like github.com) unless clearly unsafe.
-                    - General best practices unless there's a tangible risk.
-                """,
-                IssueType.PERFORMANCE: """
-                    Focus on:
-                    - N+1 queries, O(n^2) loops on large data.
-                    - Memory leaks.
-                    - Extremely inefficient operations.
-                    
-                    Do NOT flag:
-                    - Minor micro-optimizations.
-                    - Using standard image formats (GIF/PNG) unless they are massive.
-                """,
-                IssueType.READABILITY: """
-                    Focus on:
-                    - Code clarity and understandability.
-                    - Variable and function naming (are they descriptive?).
-                    - Function length and complexity (is it too complex?).
-                    - Comments and documentation (are they helpful?).
-                    
-                    Do NOT flag:
-                    - Minor indentation or whitespace issues (unless they severely hurt readability).
-                    - Personal stylistic preferences.
-                """
-            }
+            1. LOGIC: Bugs, race conditions, edge cases, and API misuse.
+            2. SECURITY: Vulnerabilities (XSS, SQLi), hardcoded secrets, and unsafe data handling.
+            3. PERFORMANCE: N+1 queries, inefficient loops, and memory leaks.
+            4. READABILITY: Naming clarity, function complexity, and helpful documentation.
             
-            specific_instructions = role_prompts.get(self.role, "")
+            CRITICAL INSTRUCTION:
+            The provided diff may contain changes to multiple files. Use this cross-file context to verify 
+            if a check (e.g., zero-division or null check) is handled internally in one file before flagging 
+            it as missing in another file that uses it.
             
-            prompt = ChatPromptTemplate.from_template(
-                """You are an expert code reviewer focusing on {role}.
-                
-                {specific_instructions}
-                
-                Review the following file diff from a pull request.
-                Identify any {role} issues.
-                
-                For each issue, provide:
-                - A "tldr": A very short summary (10-12 words max).
-                - A description, suggestion, severity, etc.
-                
-                Repository Context (Summary):
-                {context}
-                
-                File Diff:
-                {file_diff}
-                
-                Output the issues in JSON format.
-                {format_instructions}
-                """
-            )
+            Specifically: If a function handles an edge case (like division by zero) internally, 
+            do NOT flag the caller for not checking it unless it's a specific requirement for the caller.
             
-            chain = prompt | self.llm | list_parser
+            Instructions:
+            - Identify issues across ALL four domains in a single pass.
+            - Use the line numbers provided in the format 'LINE_NUMBER: LINE_CONTENT'.
+            - For each issue, provide a concise "tldr" (max 12 words).
             
-            try:
-                result = chain.invoke({
-                    "role": self.role.value,
-                    "specific_instructions": specific_instructions,
-                    "context": context[:5000], 
-                    "file_diff": file_diff_str,
-                    "format_instructions": list_parser.get_format_instructions()
-                })
+            Repository Context (Summary of existing code):
+            {context}
+            
+            Combined PR Diff (The new changes):
+            {file_diff}
+            
+            Output the discovered issues in JSON format.
+            {format_instructions}
+            """
+        )
+        
+        chain = prompt | self.llm | list_parser
+        
+        try:
+            result = chain.invoke({
+                "context": context[:8000], # Increased context limit for Gemini
+                "file_diff": all_diffs_str,
+                "format_instructions": list_parser.get_format_instructions()
+            })
+            
+            import uuid
+            for issue in result.issues:
+                if not issue.id:
+                    issue.id = str(uuid.uuid4())[:12]
+                all_issues.append(issue)
                 
-                # Ensure returned issues have the correct file path and an ID
-                import uuid
-                for issue in result.issues:
-                    if not issue.file_path:
-                        issue.file_path = file_diff.path
-                    if not issue.id:
-                        issue.id = str(uuid.uuid4())[:8] # Short ID
-                    all_issues.append(issue)
-                    
-            except Exception as e:
-                print(f"Error in {self.role} review for {file_diff.path}: {e}")
+        except Exception as e:
+            print(f"Error in batched review: {e}")
+            
+        return all_issues
                 
         return all_issues

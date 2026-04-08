@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 from enum import Enum
 
-class IssueType(Enum):
+class IssueType(str, Enum):
     LOGIC = "Logic"
     SECURITY = "Security"
     PERFORMANCE = "Performance"
     READABILITY = "Readability"
 
-class Severity(Enum):
+class Severity(str, Enum):
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
